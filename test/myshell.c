@@ -28,10 +28,7 @@ void mypwd(int argc, char **args);
 void myecho(int argc, char **args);
 void mymkdir(int argc, char **args);
 void myrmdir(int argc, char **args);
-void mymv(int argc, char **args);
-void mycp(int argc, char **args);
 void myhistory(int argc, H *hptr);
-void mydate(int argc);
 void myhelp(int argc);
 
 static int  hisCnt = 0;
@@ -66,8 +63,7 @@ int main(int argc, char** argv, char** env){
 			line[strlen(line) - 1] = '\0';
 			strcpy(hptr[hisCnt++].cmd, line);
 			
-			execute(line);
-			
+			execute(line);			
 	}
 	
 	return EXIT_SUCCESS;
@@ -99,6 +95,9 @@ void execute(char *cmd){
 	int status;
 	pid_t pid;
 	pid_t waitPid;
+	char *mycpCwd;
+	char *mymvCwd;
+	char *mydateCwd;
 
 	token = strtok(cmd, " \n\0");
 	while(token!=NULL){
@@ -131,15 +130,7 @@ void execute(char *cmd){
 		myrmdir(argc, args);
 		return;
 	}
-	else if(strcmp(args[0], "cp") == 0){
-		mycp(argc, args);
-		return;
-	}
-	else if(strcmp(args[0], "mv") == 0){
-		mymv(argc, args);
-		return;
-	}
-	else if(strcmp(args[0], "history") == 0){
+		else if(strcmp(args[0], "history") == 0){
 		myhistory(argc, hptr); 
 		return;
 	}
@@ -147,15 +138,9 @@ void execute(char *cmd){
 		myhelp(argc);
 		return;
 	}
-	else if(strcmp(args[0], "date") == 0){
-		mydate(argc);
-		return;
-	}
 	else{
 		pid = fork();
 		if(pid>0){
-			printf("부모 PID : %ld, pid: %d %d \n", (long)getpid(), pid,
-					errno);
 			while((((waitPid = wait(&status)) == -1) && errno ==
 						EINTR));
 
@@ -164,28 +149,56 @@ void execute(char *cmd){
 				perror("wait 함수 오류 반환");
 			}
 			else{
-				if(WIFEXITED(status)){
-					printf("wait : 자식 프로세스 정상 종료 %d\n",
-							WEXITSTATUS(status));
-				}
-				else if(WIFSIGNALED(status)){
+				if(WIFSIGNALED(status)){
 					printf("wait  : 자식 프로세스 비정상 종료 %d\n",
 							WTERMSIG(status));
 				}
 			}
-			printf("부모 종료 %d %d \n", waitPid, WTERMSIG(status));
 		}
 		else if(pid == 0){
-			printf("자식 PID : %ld \n", (long)getpid());
-
-			execvp(args[0], args);
-			printf("execvp함수 끝\n");
+			if(strcmp(args[0],"cp") == 0){
+				mycpCwd = (char *)malloc(strlen(rootCwd) + strlen("mycp")) + 1;
+				mycpCwd[strlen(rootCwd) + strlen("mycp")] = '\0';
+				sprintf(mycpCwd, "%s/%s", rootCwd, "mycp");
+				if(execl(mycpCwd,"mycp",args[1], args[2], (char *)0) == -1)
+					printf("execl오류 at mycp\n");
+				free(mycpCwd);
+			}
+			else if(strcmp(args[0], "mv") == 0){
+				if(argc != 3){
+					perror("argument count error at mymv");
+				}
+				else{
+					mymvCwd = (char *)malloc(strlen(rootCwd) + strlen("mymv")) + 1;
+					mymvCwd[strlen(rootCwd) + strlen("mymv")] = '\0';
+					sprintf(mymvCwd, "%s/%s", rootCwd, "mymv");
+					if(execl(mymvCwd,"mymv",args[1], args[2], (char *)0) == -1)
+						printf("execl오류 at mymv\n");
+					free(mymvCwd);
+				}
+			}
+			else if(strcmp(args[0], "date")==0){
+				if(argc != 1){
+					perror("argument count error at mymv");
+				}
+				else{
+					mydateCwd = (char *)malloc(strlen(rootCwd) + strlen("mydate")) + 1;
+					mydateCwd[strlen(rootCwd) + strlen("mydate")] = '\0';
+					sprintf(mydateCwd, "%s/%s", rootCwd, "mydate");
+					if(execl(mydateCwd,"mydate", (char *)0) == -1)
+						printf("execl오류 at mydate\n");
+					free(mydateCwd);
+				}
+			}
+			else{
+				if((execvp(args[0], args)) == -1)
+					printf("execvp오류\n");
+			}
 		}
 		else{
 			perror("fork Fail!\n");
 			return;
 		}
-
 
 		return;
 	}
@@ -270,120 +283,22 @@ void mymkdir(int argc, char **args){
 }
 
 void myrmdir(int argc, char **args){
-	if(argc != 2){
+	int i=0;
+	if(argc == 1){
 		perror("argument count error at myrmdir");
 		return;
 	}
 	else{
-		if(!rmdir(args[1]))
-			printf("removed %s\n", args[1]);
-		else
-			perror("rmdir error at myrmdir");
+		for(i=1; i<argc;i++){
+			if(!rmdir(args[i]))
+				printf("removed %s\n", args[i]);
+			else
+				perror("rmdir error at myrmdir");
+		}
 	}
 	return;
 
 }
-
-void mymv(int argc, char **args){
-	int status;
-	char *mymvCwd;
-	pid_t pid;
-	pid_t waitPid;
-	
-	mymvCwd = (char *)malloc(strlen(rootCwd) + strlen("mymv")) + 1;
-	mymvCwd[strlen(rootCwd) + strlen("mymv")] = '\0';
-	sprintf(mymvCwd, "%s/%s", rootCwd, "mymv");
-
-	if(argc!=3){
-		perror("argument count error at mymv");
-	}
-	else{
-		pid=fork();
-		if(pid>0){
-			printf("부모 PID : %ld, pid: %d %d \n", (long)getpid(), pid,
-					errno);
-			while((((waitPid = wait(&status)) == -1) && errno ==
-						EINTR));
-
-			if(waitPid == -1){
-				printf("에러 넘버: %d \n", errno);
-				perror("wait 함수 오류 반환");
-			}
-			else{
-				if(WIFEXITED(status)){
-					printf("wait : 자식 프로세스 정상 종료 %d\n",
-							WEXITSTATUS(status));
-				}
-				else if(WIFSIGNALED(status)){
-					printf("wait  : 자식 프로세스 비정상 종료 %d\n",
-							WTERMSIG(status));
-				}
-			}
-			printf("부모 종료 %d %d \n", waitPid, WTERMSIG(status));
-		}
-		else if(pid == 0){
-			printf("자식 PID : %ld \n", (long)getpid());
-			if(execl(mymvCwd,"mycp",args[1], args[2], (char *)0) == -1)
-				printf("execl오류");
-			printf("execl끝\n");
-		}
-		else{
-			perror("fork Fail!\n");
-			return;
-		}
-		return;
-	}
-}
-
-void mycp(int argc, char **args){
-	int status;
-	char *mycpCwd;
-	pid_t pid;
-	pid_t waitPid;
-	mycpCwd = (char *)malloc(strlen(rootCwd) + strlen("mycp")) + 1;
-	mycpCwd[strlen(rootCwd) + strlen("mycp")] = '\0';
-	sprintf(mycpCwd, "%s/%s", rootCwd, "mycp");
-	if(argc!=3){
-		perror("argument count error at mymv");
-	}
-	else{
-		pid=fork();
-		if(pid>0){
-			printf("부모 PID : %ld, pid: %d %d \n", (long)getpid(), pid,
-					errno);
-			while((((waitPid = wait(&status)) == -1) && errno ==
-						EINTR));
-
-			if(waitPid == -1){
-				printf("에러 넘버: %d \n", errno);
-				perror("wait 함수 오류 반환");
-			}
-			else{
-				if(WIFEXITED(status)){
-					printf("wait : 자식 프로세스 정상 종료 %d\n",
-							WEXITSTATUS(status));
-				}
-				else if(WIFSIGNALED(status)){
-					printf("wait  : 자식 프로세스 비정상 종료 %d\n",
-							WTERMSIG(status));
-				}
-			}
-			printf("부모 종료 %d %d \n", waitPid, WTERMSIG(status));
-		}
-		else if(pid == 0){
-			printf("자식 PID : %ld \n", (long)getpid());
-			if(execl(mycpCwd,"mycp",args[1], args[2], (char *)0) == -1)
-				printf("exelc오류 \n");
-			printf("execl끝\n");
-			}	
-		else{
-			perror("fork Fail!\n");
-			return;
-		}
-		return;
-	}
-}
-
 void myhistory(int argc, H *hptr){
 	int i=0;
 	if(argc != 1){
@@ -395,59 +310,6 @@ void myhistory(int argc, H *hptr){
 			printf("%d : %s\n", i+1, hptr[i].cmd);
 	}
 }
-
-void mydate(int argc){
-	int status;
-	char *mydateCwd;
-	pid_t pid;
-	pid_t waitPid;
-	mydateCwd = (char *)malloc(strlen(rootCwd) + strlen("mydate")) + 1;
-	mydateCwd[strlen(rootCwd) + strlen("mydate")] = '\0';
-	sprintf(mydateCwd, "%s/%s", rootCwd,"mydate");
-	if(argc!=1){
-		perror("argument count error at mydate");
-	}
-	else{
-		pid=fork();
-		if(pid>0){
-			printf("부모 PID : %ld, pid: %d %d \n", (long)getpid(), pid,
-					errno);
-			while((((waitPid = wait(&status)) == -1) && errno ==
-						EINTR));
-
-			if(waitPid == -1){
-				printf("에러 넘버: %d \n", errno);
-				perror("wait 함수 오류 반환");
-			}
-			else{
-				if(WIFEXITED(status)){
-					printf("wait : 자식 프로세스 정상 종료 %d\n",
-							WEXITSTATUS(status));
-				}
-				else if(WIFSIGNALED(status)){
-					printf("wait  : 자식 프로세스 비정상 종료 %d\n",
-							WTERMSIG(status));
-				}
-			}
-			printf("부모 종료 %d %d \n", waitPid, WTERMSIG(status));
-		}
-		else if(pid == 0){
-			printf("자식 PID : %ld \n", (long)getpid());
-			if(execl(mydateCwd,"mydate", (char *)0) == -1)
-				printf("exelc오류 \n");
-
-			printf("execl끝\n");
-		}
-		else{
-			perror("fork Fail!\n");
-			return;
-		}
-		return;
-	}
-
-
-}
-
 
 void myhelp(int argc){
 	if(argc != 1){

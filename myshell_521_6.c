@@ -56,7 +56,44 @@ int main(int argc, char** argv, char** env){
 	gethostname(host_name, MAX_SIZE);
 	rootCwd = getcwd(NULL, BUFSIZE);
 
-	myhelp(1);
+	printf("MyShell 시작\n");
+//	cwd = my_getcwd(user_name);
+//	while(1){
+//		pid=fork();
+//		if(pid>0){
+//			printf("부모 PID : %ld, pid : %d %d \n", (long)getpid(),
+//					pid, errno);
+//			while((((waitPid = wait(&status)) == -1) && errno == EINTR));
+//
+//			if(waitPid == -1){
+//				printf("에러 넘버 : %d \n", errno);
+//				perror("wait 함수 오류 반환");
+//			}
+//			else{
+//				if(WIFEXITED(status)){
+//					printf("wait : 자식 프로세스 정상 종료 %d\n",
+//							WEXITSTATUS(status));
+//				}
+//				else if(WIFSIGNALED(status)){
+//					printf("wait : 자식 프로세스 비정상 종료 %d\n",
+//							WTERMSIG(status));
+//				}
+//			}
+//
+//			printf("부모 종료 %d %d\n", waitPid, WTERMSIG(status));
+//		}
+//		else if(pid == 0){
+//			printf("자식 PID : %ld \n", (long)getpid());
+//			while(1){
+//				cwd = my_getcwd(user_name);
+//				fprintf(stdout, "%s@%s:%s$ ", user_name, host_name, cwd);
+//				fgets(line, sizeof(line)-1, stdin);
+//				if(strcmp(line, "\n")==0) continue;
+//				else break;
+//			}
+//			printf("while문 빠져나온다.\n");
+
+
 	while(1){
 			cwd=my_getcwd(user_name);
 			fprintf(stdout, "%s@%s:%s$ ", user_name, host_name, cwd);
@@ -69,6 +106,10 @@ int main(int argc, char** argv, char** env){
 			execute(line);
 			
 	}
+//		else{
+//			perror("fork Fail! \n");
+//			return -1;
+//		}
 	
 	return EXIT_SUCCESS;
 }
@@ -195,17 +236,9 @@ void execute(char *cmd){
 }
 void mycd(int argc, char **args){
 	char cwd[BUFSIZE];
-	char user_name[MAX_SIZE];
-	char *BUF;
-
-	getlogin_r(user_name, MAX_SIZE);
-	
-	BUF = (char *)malloc(strlen("/home") + strlen(user_name)) + 1;
-	BUF[strlen("/home") + strlen(user_name)] = '\0';
-	sprintf(BUF, "%s/%s", "/home", user_name);
 
 	if(argc==1){
-		chdir(BUF);
+		chdir("/");
 		puts(getcwd(cwd, sizeof(cwd)));
 
 	}
@@ -252,19 +285,16 @@ void myecho(int argc, char **args){
 }
 
 void mymkdir(int argc, char **args){
-	int i=0;
-	if(argc == 1)
+	if(argc != 2)
 	{
 		perror("argument count error at mymkdir");
 		return;
 	}
 	else{
-		for(i=1; i<argc; i++){
-			if(!mkdir(args[i], 0755))
-				printf("made %s\n", args[i]);
-			else
-				perror("mkdir error at mymkdir");
-		}
+		if(!mkdir(args[1], 0755))
+			printf("made %s\n", args[1]);
+		else
+			perror("mkdir error at mymkdir");
 
 	}
 }
@@ -286,14 +316,12 @@ void myrmdir(int argc, char **args){
 
 void mymv(int argc, char **args){
 	int status;
-	char *mymvCwd;
+	char cwd[BUFSIZE];
 	pid_t pid;
 	pid_t waitPid;
 	
-	mymvCwd = (char *)malloc(strlen(rootCwd) + strlen("mymv")) + 1;
-	mymvCwd[strlen(rootCwd) + strlen("mymv")] = '\0';
-	sprintf(mymvCwd, "%s/%s", rootCwd, "mymv");
-
+	getcwd(cwd, sizeof(cwd));
+	printf("mv cwd : %s\n", cwd);
 	if(argc!=3){
 		perror("argument count error at mymv");
 	}
@@ -323,8 +351,9 @@ void mymv(int argc, char **args){
 		}
 		else if(pid == 0){
 			printf("자식 PID : %ld \n", (long)getpid());
-			if(execl(mymvCwd,"mycp",args[1], args[2], (char *)0) == -1)
-				printf("execl오류");
+			if(execl("/home/st1623021/unix_programming/myshell/mymv","mymv",args[1],args[2],(char
+							*)0) == -1) printf("exelc오류\n");
+
 			printf("execl끝\n");
 		}
 		else{
@@ -337,12 +366,14 @@ void mymv(int argc, char **args){
 
 void mycp(int argc, char **args){
 	int status;
+	char *mycp = "mycp";
 	char *mycpCwd;
 	pid_t pid;
 	pid_t waitPid;
-	mycpCwd = (char *)malloc(strlen(rootCwd) + strlen("mycp")) + 1;
-	mycpCwd[strlen(rootCwd) + strlen("mycp")] = '\0';
-	sprintf(mycpCwd, "%s/%s", rootCwd, "mycp");
+	printf("%s %s\n", args[1], args[2]);
+	mycpCwd = (char *)malloc(strlen(rootCwd) + strlen(mycp)) + 1;
+	mycpCwd[strlen(rootCwd) + strlen(mycp)] = '\0';
+	sprintf(mycpCwd, "%s/%s", rootCwd, mycp);
 	if(argc!=3){
 		perror("argument count error at mymv");
 	}
@@ -372,10 +403,15 @@ void mycp(int argc, char **args){
 		}
 		else if(pid == 0){
 			printf("자식 PID : %ld \n", (long)getpid());
+		//	if(execl("/home/st1623021/unix_programming/myshell/mycp","mycp",args[1],args[2],(char
+		//					*)0) == -1) printf("exelc오류\n");
+		
+		//	if(execl("./mycp","mycp",args[1], args[2], (char *)0) == -1)
 			if(execl(mycpCwd,"mycp",args[1], args[2], (char *)0) == -1)
 				printf("exelc오류 \n");
+
 			printf("execl끝\n");
-			}	
+		}
 		else{
 			perror("fork Fail!\n");
 			return;
@@ -398,12 +434,13 @@ void myhistory(int argc, H *hptr){
 
 void mydate(int argc){
 	int status;
+	char *mydate = "mydate";
 	char *mydateCwd;
 	pid_t pid;
 	pid_t waitPid;
-	mydateCwd = (char *)malloc(strlen(rootCwd) + strlen("mydate")) + 1;
-	mydateCwd[strlen(rootCwd) + strlen("mydate")] = '\0';
-	sprintf(mydateCwd, "%s/%s", rootCwd,"mydate");
+	mydateCwd = (char *)malloc(strlen(rootCwd) + strlen(mydate)) + 1;
+	mydateCwd[strlen(rootCwd) + strlen(mydate)] = '\0';
+	sprintf(mydateCwd, "%s/%s", rootCwd, mydate);
 	if(argc!=1){
 		perror("argument count error at mydate");
 	}
@@ -433,6 +470,10 @@ void mydate(int argc){
 		}
 		else if(pid == 0){
 			printf("자식 PID : %ld \n", (long)getpid());
+		//	if(execl("/home/st1623021/unix_programming/myshell/mycp","mycp",args[1],args[2],(char
+		//					*)0) == -1) printf("exelc오류\n");
+		
+		//	if(execl("./mycp","mycp",args[1], args[2], (char *)0) == -1)
 			if(execl(mydateCwd,"mydate", (char *)0) == -1)
 				printf("exelc오류 \n");
 
@@ -463,7 +504,6 @@ void myhelp(int argc){
 	puts("mkdir directory");
 	puts("rmdir directory");
 	puts("history");
-	puts("date");
 	puts("pwd");
 	puts("나머지 커맨드라인은 execvp함수를 통해서 사용가능");
 	printf("-----------------------------------------------------\n");

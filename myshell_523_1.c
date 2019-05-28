@@ -55,7 +55,8 @@ int main(int argc, char** argv, char** env){
 	getlogin_r(user_name, MAX_SIZE);
 	gethostname(host_name, MAX_SIZE);
 	rootCwd = getcwd(NULL, BUFSIZE);
-
+	
+	printf("%s %s\n", user_name, host_name);
 	myhelp(1);
 	while(1){
 			cwd=my_getcwd(user_name);
@@ -131,14 +132,52 @@ void execute(char *cmd){
 		myrmdir(argc, args);
 		return;
 	}
-	else if(strcmp(args[0], "cp") == 0){
-		mycp(argc, args);
+	else if((strcmp(args[0], "cp") == 0) || (strcmp(args[0], "mv") == 0) ||
+			(strcmp(args[0], "date") == 0)){
+		pid = fork();
+		if(pid>0){
+			printf("부모 PID : %ld, pid: %d %d \n", (long)getpid(), pid,
+					errno);
+			while((((waitPid = wait(&status)) == -1) && errno ==
+						EINTR));
+
+			if(waitPid == -1){
+				printf("에러 넘버: %d \n", errno);
+				perror("wait 함수 오류 반환");
+			}
+			else{
+				if(WIFEXITED(status)){
+					printf("wait : 자식 프로세스 정상 종료 %d\n",
+							WEXITSTATUS(status));
+				}
+				else if(WIFSIGNALED(status)){
+					printf("wait  : 자식 프로세스 비정상 종료 %d\n",
+							WTERMSIG(status));
+				}
+			}
+			printf("부모 종료 %d %d \n", waitPid, WTERMSIG(status));
+		}
+		else if(pid == 0){
+			printf("자식 PID : %ld \n", (long)getpid());
+			if(strcmp(args[0],"cp") == 0)
+				
+		//	execvp(args[0], args);
+			printf("execvp함수 끝\n");
+		}
+		else{
+			perror("fork Fail!\n");
+			return;
+		}
+
+
+
+	//	mycp(argc, args);
 		return;
 	}
-	else if(strcmp(args[0], "mv") == 0){
-		mymv(argc, args);
-		return;
-	}
+//	else if(strcmp(args[0], "mv") == 0){
+//		mymv(argc, args);
+//		return;
+//	}
 	else if(strcmp(args[0], "history") == 0){
 		myhistory(argc, hptr); 
 		return;
@@ -147,10 +186,10 @@ void execute(char *cmd){
 		myhelp(argc);
 		return;
 	}
-	else if(strcmp(args[0], "date") == 0){
-		mydate(argc);
-		return;
-	}
+//	else if(strcmp(args[0], "date") == 0){
+//		mydate(argc);
+//		return;
+//	}
 	else{
 		pid = fork();
 		if(pid>0){
